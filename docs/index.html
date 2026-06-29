@@ -334,6 +334,38 @@ document.querySelectorAll('.card input, .card textarea, .card select').forEach(e
   el.addEventListener('change', updatePreview);
 });
 
+// ====== HMAC-SHA256 签名（与 Android 端 SignedPayload.kt 同步） ======
+const SIGN_KEY = new TextEncoder().encode('LhD0wnl04d3rSgn3dP4yl04d!@#$%^&');
+
+async function hmacSign(message) {
+  const key = await crypto.subtle.importKey(
+    'raw', SIGN_KEY,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false, ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(message));
+  // Base64 URL-safe
+  return btoa(String.fromCharCode(...new Uint8Array(sig)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function generateSignedUpdate(updateData) {
+  const dataStr = JSON.stringify(updateData);
+  const ts = Math.floor(Date.now() / 1000);
+  const message = dataStr + '.' + ts;
+  // 同步方式不能用 crypto.subtle 就直接导入外部库简化
+  // 这里用同步阻塞方式
+  return { data: updateData, ts };
+}
+
+async function signUpdateData(updateData) {
+  const dataStr = JSON.stringify(updateData, Object.keys(updateData).sort());
+  const ts = Math.floor(Date.now() / 1000);
+  const message = `${dataStr}.${ts}`;
+  const signature = await hmacSign(message);
+  return { data: updateData, sign: signature, ts };
+}
+
 // ====== 保存到 GitHub ======
 async function saveAll() {
   if (!ghLoaded) {
@@ -342,11 +374,12 @@ async function saveAll() {
   }
 
   const status = document.getElementById('connectionStatus');
-  status.textContent = '⏳ 保存中...';
+  status.textContent = '⏳ 签名并保存中...';
   status.className = 'status';
 
   try {
-    const buildUpdate = {
+    // 构建更新数据
+    const rawUpdate = {
       version_code: parseInt(document.getElementById('vCode').value) || 0,
       version_name: document.getElementById('vName').value || '',
       force_update: document.getElementById('vForce').value === 'true',
@@ -355,15 +388,19 @@ async function saveAll() {
       changelog: document.getElementById('vChangelog').value.replace(/\n/g, '\\n')
     };
 
-    const updateContent = btoa(unescape(encodeURIComponent(JSON.stringify(buildUpdate, null, 2))));
+    // 签名 update.json（HMAC + 时间戳防重放）
+    const signedUpdate = await signUpdateData(rawUpdate);
+    const signedUpdateJson = JSON.stringify(signedUpdate, null, 2);
+
+    const updateContent = btoa(unescape(encodeURIComponent(signedUpdateJson)));
     const announceContent = btoa(unescape(encodeURIComponent(JSON.stringify(announceData, null, 2))));
 
-    // 保存 update.json
+    // 保存已签名的 update.json
     await ghFetch('/contents/api/update.json', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        message: 'Update version to ' + buildUpdate.version_name,
+        message: 'Signed update v' + rawUpdate.version_name,
         content: updateContent,
         sha: window._updateSha || undefined,
         branch: 'main'
@@ -383,10 +420,11 @@ async function saveAll() {
     });
 
     window._updateSha = annResult.sha;
+    window._announceSha = annResult.sha;
 
-    status.textContent = '✅ 保存成功！GitHub Pages 将在 1-2 分钟内生效';
+    status.textContent = '✅ 签名并保存成功！客户端将自动验证签名';
     status.className = 'status ok';
-    toast('保存成功！');
+    toast('保存成功（已签名）！');
   } catch (e) {
     status.textContent = '❌ 保存失败: ' + e.message;
     status.className = 'status';

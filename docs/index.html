@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LH Downloader - 公告管理后台</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+.container { max-width: 900px; margin: 0 auto; padding: 24px 16px; }
+h1 { font-size: 24px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+.sub { color: #888; font-size: 13px; margin-bottom: 24px; }
+.card { background: #1a1a2e; border-radius: 12px; padding: 20px; margin-bottom: 16px; border: 1px solid #2a2a3e; }
+.card h2 { font-size: 16px; color: #aaa; margin-bottom: 12px; }
+label { display: block; font-size: 13px; color: #999; margin-bottom: 4px; margin-top: 12px; }
+label:first-child { margin-top: 0; }
+input, textarea, select { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #333; background: #252540; color: #e0e0e0; font-size: 14px; outline: none; }
+input:focus, textarea:focus, select:focus { border-color: #6c5ce7; }
+textarea { min-height: 80px; resize: vertical; font-family: inherit; }
+.row { display: flex; gap: 12px; }
+.row > * { flex: 1; }
+.btn { padding: 10px 20px; border-radius: 8px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: .2s; }
+.btn-primary { background: #6c5ce7; color: #fff; }
+.btn-primary:hover { background: #5a4bd1; }
+.btn-danger { background: #e74c3c; color: #fff; }
+.btn-danger:hover { background: #c0392b; }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+.btn-outline { background: transparent; border: 1px solid #444; color: #ccc; }
+.btn-outline:hover { border-color: #6c5ce7; color: #6c5ce7; }
+.actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+.announce-item { background: #252540; border-radius: 8px; padding: 14px; margin-bottom: 10px; border-left: 3px solid #6c5ce7; }
+.announce-item .title { font-weight: 600; font-size: 15px; }
+.announce-item .meta { font-size: 12px; color: #888; margin-top: 4px; }
+.announce-item .content-text { font-size: 13px; color: #bbb; margin-top: 8px; }
+.announce-item .item-actions { display: flex; gap: 6px; margin-top: 8px; }
+.badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+.badge-info { background: #3498db22; color: #3498db; border: 1px solid #3498db44; }
+.badge-warning { background: #f39c1222; color: #f39c12; border: 1px solid #f39c1244; }
+.badge-important { background: #e74c3c22; color: #e74c3c; border: 1px solid #e74c3c44; }
+.empty { text-align: center; padding: 40px 20px; color: #666; }
+.empty p { margin-top: 8px; }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 12px 24px; border-radius: 8px; color: #fff; font-weight: 500; z-index: 1000; opacity: 0; transition: .3s; }
+.toast.show { opacity: 1; }
+.toast.success { background: #27ae60; }
+.toast.error { background: #e74c3c; }
+pre { background: #1a1a2e; padding: 12px; border-radius: 8px; font-size: 12px; overflow-x: auto; color: #8f8; margin-top: 8px; }
+.status { font-size: 13px; color: #888; margin-top: 8px; }
+.status.ok { color: #27ae60; }
+@media (max-width: 600px) { .row { flex-direction: column; } }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📋 公告管理系统</h1>
+  <p class="sub">LH Downloader - 管理版本更新和公告推送</p>
+
+  <!-- 配置 -->
+  <div class="card">
+    <h2>🔑 仓库配置</h2>
+    <div class="row">
+      <div>
+        <label>GitHub Token (PAT)</label>
+        <input type="password" id="ghToken" placeholder="github_pat_xxx..." />
+      </div>
+      <div>
+        <label>仓库</label>
+        <input type="text" id="ghRepo" value="wuxiang999/lh-downloader-api" />
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" onclick="loadData()">连接并加载</button>
+      <button class="btn btn-outline" onclick="saveAll()">保存所有更改</button>
+    </div>
+    <div id="connectionStatus" class="status"></div>
+  </div>
+
+  <!-- 版本更新 -->
+  <div class="card">
+    <h2>🔄 版本更新</h2>
+    <div class="row">
+      <div>
+        <label>版本号 (version_code)</label>
+        <input type="number" id="vCode" value="53" />
+      </div>
+      <div>
+        <label>版本名 (version_name)</label>
+        <input type="text" id="vName" value="1.0.53" />
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>强制更新</label>
+        <select id="vForce">
+          <option value="true">是</option>
+          <option value="false">否</option>
+        </select>
+      </div>
+      <div>
+        <label>最低支持版本 (min_supported)</label>
+        <input type="number" id="vMin" value="45" />
+      </div>
+    </div>
+    <label>下载链接</label>
+    <input type="text" id="vUrl" value="https://github.com/wuxiang999/lh-downloader-api/releases/download/v1.0.53/LH-Downloader-v1.0.53.apk" />
+    <label>更新日志 (每行一条，支持 \\n)</label>
+    <textarea id="vChangelog" rows="4">● 修复番茄目录解析(chapterListWithVolume)
+● 修复七猫 is_vip=0 zip下载
+● 新增公告/强更系统
+● 加强加密混淆</textarea>
+  </div>
+
+  <!-- 公告列表 -->
+  <div class="card">
+    <h2>📢 公告列表</h2>
+    <div id="announceList">
+      <div class="empty">
+        <p>暂无公告，点击下方添加</p>
+      </div>
+    </div>
+    <button class="btn btn-outline" onclick="addAnnouncement()" style="width:100%;margin-top:8px;">＋ 添加公告</button>
+  </div>
+
+  <!-- 预览 -->
+  <div class="card">
+    <h2>👁 当前 JSON 预览</h2>
+    <pre id="jsonPreview">点击「连接并加载」查看</pre>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ====== 全局状态 ======
+let announceData = { items: [] };
+let updateData = {};
+let ghLoaded = false;
+
+// ====== Toast ======
+function toast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + type + ' show';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ====== GitHub API 调用 ======
+function getToken() { return document.getElementById('ghToken').value.trim(); }
+function getRepo() { return document.getElementById('ghRepo').value.trim(); }
+function getHeaders() {
+  return {
+    'Authorization': 'Bearer ' + getToken(),
+    'Accept': 'application/vnd.github+json'
+  };
+}
+
+async function ghFetch(path, options = {}) {
+  const url = 'https://api.github.com/repos/' + getRepo() + path;
+  const res = await fetch(url, { ...options, headers: { ...getHeaders(), ...options.headers } });
+  if (!res.ok) {
+    let msg = `HTTP ${res.status}`;
+    try { const j = await res.json(); msg = j.message || msg; } catch(e) {}
+    throw new Error(msg);
+  }
+  return res.json();
+}
+
+async function loadData() {
+  const token = getToken();
+  const repo = getRepo();
+  if (!token || !repo) {
+    toast('请填写 Token 和仓库名', 'error');
+    return;
+  }
+
+  const status = document.getElementById('connectionStatus');
+  status.textContent = '⏳ 连接中...';
+  status.className = 'status';
+
+  try {
+    // 加载 update.json
+    let updateSha = '';
+    try {
+      const upd = await ghFetch('/contents/api/update.json');
+      updateSha = upd.sha;
+      const content = atob(upd.content);
+      updateData = JSON.parse(content);
+      document.getElementById('vCode').value = updateData.version_code || '';
+      document.getElementById('vName').value = updateData.version_name || '';
+      document.getElementById('vForce').value = updateData.force_update ? 'true' : 'false';
+      document.getElementById('vMin').value = updateData.min_supported || '';
+      document.getElementById('vUrl').value = updateData.download_url || '';
+      document.getElementById('vChangelog').value = (updateData.changelog || '').split('\\n').join('\n');
+    } catch (e) {
+      console.warn('update.json load:', e.message);
+      updateSha = '';
+    }
+
+    // 加载 announce.json
+    let announceSha = '';
+    try {
+      const ann = await ghFetch('/contents/api/announce.json');
+      announceSha = ann.sha;
+      const content = atob(ann.content);
+      announceData = JSON.parse(content);
+    } catch (e) {
+      console.warn('announce.json load:', e.message);
+      announceSha = '';
+      announceData = { items: [] };
+    }
+
+    // 保存 SHA 用于后续更新
+    window._updateSha = updateSha;
+    window._announceSha = announceSha;
+    ghLoaded = true;
+
+    renderAnnouncements();
+    updatePreview();
+    status.textContent = '✅ 已加载，可编辑后保存';
+    status.className = 'status ok';
+    toast('加载成功');
+  } catch (e) {
+    status.textContent = '❌ 加载失败: ' + e.message;
+    status.className = 'status';
+    toast('加载失败: ' + e.message, 'error');
+  }
+}
+
+// ====== 渲染公告 ======
+function renderAnnouncements() {
+  const container = document.getElementById('announceList');
+  const items = announceData.items || [];
+  
+  if (items.length === 0) {
+    container.innerHTML = '<div class="empty"><p>暂无公告，点击下方添加</p></div>';
+    return;
+  }
+
+  container.innerHTML = items.map((item, i) => {
+    const typeClass = item.type === 'warning' ? 'badge-warning' : item.type === 'important' ? 'badge-important' : 'badge-info';
+    return `<div class="announce-item">
+      <div class="title">${escapeHtml(item.title || '无标题')} <span class="badge ${typeClass}">${item.type || 'info'}</span></div>
+      <div class="content-text">${escapeHtml(item.content || '')}</div>
+      <div class="item-actions">
+        <button class="btn btn-sm btn-outline" onclick="editAnnouncement(${i})">编辑</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteAnnouncement(${i})">删除</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function escapeHtml(text) {
+  const d = document.createElement('div');
+  d.textContent = text;
+  return d.innerHTML;
+}
+
+// ====== 编辑公告 ======
+let editingIndex = -1;
+
+function addAnnouncement() {
+  editingIndex = -1;
+  document.getElementById('editTitle').value = '';
+  document.getElementById('editContent').value = '';
+  document.getElementById('editType').value = 'info';
+  document.getElementById('editLink').value = '';
+  document.getElementById('editModal').classList.add('show');
+}
+
+function editAnnouncement(index) {
+  editingIndex = index;
+  const item = announceData.items[index];
+  document.getElementById('editTitle').value = item.title || '';
+  document.getElementById('editContent').value = item.content || '';
+  document.getElementById('editType').value = item.type || 'info';
+  document.getElementById('editLink').value = item.link || '';
+  document.getElementById('editModal').classList.add('show');
+}
+
+function saveEdit() {
+  const item = {
+    title: document.getElementById('editTitle').value.trim(),
+    content: document.getElementById('editContent').value.trim(),
+    type: document.getElementById('editType').value,
+    link: document.getElementById('editLink').value.trim()
+  };
+
+  if (!item.title) { toast('请输入标题', 'error'); return; }
+  if (!item.content) { toast('请输入内容', 'error'); return; }
+
+  if (editingIndex >= 0) {
+    announceData.items[editingIndex] = item;
+  } else {
+    announceData.items.push(item);
+  }
+
+  document.getElementById('editModal').classList.remove('show');
+  renderAnnouncements();
+  updatePreview();
+  toast(editingIndex >= 0 ? '已更新' : '已添加');
+}
+
+function deleteAnnouncement(index) {
+  if (!confirm('确定删除这条公告？')) return;
+  announceData.items.splice(index, 1);
+  renderAnnouncements();
+  updatePreview();
+  toast('已删除');
+}
+
+function closeModal() {
+  document.getElementById('editModal').classList.remove('show');
+}
+
+// ====== 预览 ======
+function updatePreview() {
+  const update = {
+    version_code: parseInt(document.getElementById('vCode').value) || 0,
+    version_name: document.getElementById('vName').value || '',
+    force_update: document.getElementById('vForce').value === 'true',
+    min_supported: parseInt(document.getElementById('vMin').value) || 0,
+    download_url: document.getElementById('vUrl').value || '',
+    changelog: document.getElementById('vChangelog').value.replace(/\n/g, '\\n')
+  };
+  document.getElementById('jsonPreview').textContent = 
+    '=== update.json ===\n' + JSON.stringify(update, null, 2) + 
+    '\n\n=== announce.json ===\n' + JSON.stringify(announceData, null, 2);
+}
+
+// 实时预览更新
+document.querySelectorAll('.card input, .card textarea, .card select').forEach(el => {
+  el.addEventListener('input', updatePreview);
+  el.addEventListener('change', updatePreview);
+});
+
+// ====== 保存到 GitHub ======
+async function saveAll() {
+  if (!ghLoaded) {
+    toast('请先点击「连接并加载」', 'error');
+    return;
+  }
+
+  const status = document.getElementById('connectionStatus');
+  status.textContent = '⏳ 保存中...';
+  status.className = 'status';
+
+  try {
+    const buildUpdate = {
+      version_code: parseInt(document.getElementById('vCode').value) || 0,
+      version_name: document.getElementById('vName').value || '',
+      force_update: document.getElementById('vForce').value === 'true',
+      min_supported: parseInt(document.getElementById('vMin').value) || 0,
+      download_url: document.getElementById('vUrl').value || '',
+      changelog: document.getElementById('vChangelog').value.replace(/\n/g, '\\n')
+    };
+
+    const updateContent = btoa(unescape(encodeURIComponent(JSON.stringify(buildUpdate, null, 2))));
+    const announceContent = btoa(unescape(encodeURIComponent(JSON.stringify(announceData, null, 2))));
+
+    // 保存 update.json
+    await ghFetch('/contents/api/update.json', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: 'Update version to ' + buildUpdate.version_name,
+        content: updateContent,
+        sha: window._updateSha || undefined,
+        branch: 'main'
+      })
+    });
+
+    // 保存 announce.json
+    const annResult = await ghFetch('/contents/api/announce.json', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: 'Update announcements (' + (announceData.items?.length || 0) + ' items)',
+        content: announceContent,
+        sha: window._announceSha || undefined,
+        branch: 'main'
+      })
+    });
+
+    window._updateSha = annResult.sha;
+
+    status.textContent = '✅ 保存成功！GitHub Pages 将在 1-2 分钟内生效';
+    status.className = 'status ok';
+    toast('保存成功！');
+  } catch (e) {
+    status.textContent = '❌ 保存失败: ' + e.message;
+    status.className = 'status';
+    toast('保存失败: ' + e.message, 'error');
+  }
+}
+
+// ====== 点击加载 ======
+</script>
+
+<!-- 编辑弹窗 -->
+<div class="modal" id="editModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>编辑公告</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <label>标题</label>
+    <input type="text" id="editTitle" placeholder="公告标题" />
+    <label>类型</label>
+    <select id="editType">
+      <option value="info">信息 (info)</option>
+      <option value="warning">警告 (warning)</option>
+      <option value="important">重要 (important)</option>
+    </select>
+    <label>内容</label>
+    <textarea id="editContent" rows="4" placeholder="公告内容"></textarea>
+    <label>跳转链接 (可选)</label>
+    <input type="text" id="editLink" placeholder="https://..." />
+    <div class="actions">
+      <button class="btn btn-primary" onclick="saveEdit()">保存</button>
+      <button class="btn btn-outline" onclick="closeModal()">取消</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.modal {
+  display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 999;
+}
+.modal.show { display: flex; }
+.modal-content { background: #1a1a2e; border-radius: 12px; padding: 24px; width: 90%; max-width: 500px; border: 1px solid #2a2a3e; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.modal-header h3 { color: #fff; font-size: 18px; }
+.modal-close { background: none; border: none; color: #888; font-size: 24px; cursor: pointer; }
+.modal-close:hover { color: #fff; }
+</style>
+
+</body>
+</html>

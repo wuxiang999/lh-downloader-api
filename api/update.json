@@ -7,6 +7,6 @@
     "download_url": "https://github.com/wuxiang999/LH-Downloader/releases/download/v1.0.53/app-release.apk",
     "changelog": "● 修复番茄目录解析(chapterListWithVolume)\n● 修复七猫 is_vip=0 zip下载\n● 新增公告/强更系统\n● 加强加密混淆"
   },
-  "sign": "YgkkwLrGKQLbwUkcvjapDtBBeRN-HopDSqVUc_wUbV8",
-  "ts": 1782777227
+  "sign": "QaebcOvZjukNtCCHt95D7gzhIAo7mREMvCpwxVV4RdE",
+  "ts": 1782777461
 }

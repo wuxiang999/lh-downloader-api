@@ -1,8 +1,8 @@
 {
   "items": [
     {
-      "title": "版本更新 v1.0.53", 
-      "content": "请更新至最新版本，修复了目录解析问题",
+      "title": "新版本 v1.0.54 发布",
+      "content": "更新内容：\n• 修复番茄下载 405 错误，新增服务器代理\n• 全面 Material 3 UI 美化\n• 修复 update.json 签名问题",
       "type": "info",
       "link": ""
     }

@@ -1,10 +1,7 @@
 {
-  "items": [
-    {
-      "title": "新版本 v1.0.54 发布",
-      "content": "更新内容：\n• 修复番茄下载 405 错误，新增服务器代理\n• 全面 Material 3 UI 美化\n• 修复 update.json 签名问题",
-      "type": "info",
-      "link": ""
-    }
-  ]
+  "title": "LH 下载器 v1.0.0 正式版发布",
+  "content": "🎉 第一个正式版本发布！支持番茄/七猫小说批量下载，服务端鉴权代理，Material 3 全新界面。",
+  "level": "info",
+  "show_version": "1.0.0",
+  "url": "https://github.com/wuxiang999/LH-Downloader/releases/tag/v1.0.0"
 }
